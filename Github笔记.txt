@@ -1,0 +1,88 @@
+git help xx(命令)             //网络搜索对应命令官方解释
+MD5信息摘要算法             Hash(哈希)算法还具有一个特点，就是很难找到逆向规律
+1. 设置用户名
+ git config --global user.name 'Bo-sunlight'
+
+2. 设置用户名邮箱
+ git config --global user.email “1250111801@qq.com”
+
+3. 查看设置
+ git config --list
+ 
+4.修改用户名
+git config --global user.name 用户名    （ps：无双引号）
+
+5. touch 文件名     可创建文件。
+6.cat 文件名        查看文件内容 
+  git rm 文件       //删除
+  ll              //查看当前文件内容
+  clear           //清屏
+  vim test.txt   //打开要编辑的文本,没有则创建  i进入编辑模式，esc键进入命令模式  :wq  保存并退出
+  mkdir          //创建文件夹
+
+7. D:\Git\Git\etc里面的gitconfig文件修改别名
+8.git config --global alias.psm "push origin master"        //设置别名
+9.
+10.   HEAD：指针      //指向当前版本
+      空格向下翻页
+//	  git log --pretty=oneline     //太多了的时候的完美显示（只显示主要信息）
+//	  git log --oneline           //一个版本只显示一行
+
+*	  git reflog                   //还显示版本更新号
+基于索引值操作[推荐]  git reset --hard [局部索引值]  例 ：git reset --hard a6ace91  
+--hard 参数  在本地库移动 HEAD 指针：重置暂存区  重置工作区（全部都在同一版本）
+
+删除
+   前提：删除前，文件存在时的状态提交到了本地库。  
+   操作：git reset --hard [指针位置]  
+		删除操作已经提交到本地库：指针位置指向历史记录  删
+		除操作尚未提交到本地库：指针位置使用 HEAD
+
+比较文件差异 
+	git diff [文件名]  将工作区中的文件和暂存区进行比较  
+	it diff [本地库中历史版本] [文件名]  将工作区中的文件和本地库历史记录比较  不带文件名比较多个文件
+	
+创建分支 
+  git branch [分支名]  
+  查看分支 git branch -v  
+  切换分支 git checkout [分支名]
+  
+合并分支  
+ 第一步：切换到接受修改的分支（被合并，增加新内容）上 git checkout [被合并分支名]  （也就是切换到主枝上）
+ 第二步：执行 merge 命令 git merge [有新内容分支名]
+ 解决冲突 
+ 第一步：编辑文件，删除特殊符号  
+   第二步：把文件修改到满意的程度，保存退出  
+   第三步：git add [文件名]  第四步：git commit -m "日志信息" 注意：此时 commit 一定不能带具体文件名
+   
+拉取 
+    pull=fetch+merge  
+	git fetch [远程库地址别名] [远程分支名]  
+	git merge [远程库地址别名/远程分支名]  
+	git pull [远程库地址别名] [远程分支名]           //git pull origin master 从网络上更新代码
+	
+注意：
+   此时如果不是基于 GitHub 远程库的最新版所做的修改，不能推送，必须先拉取。拉取下来后如果进入冲突状态，则按照“分支冲突解决”操作解决即可
+  
+步骤：
+●在GitHub上创建项目，拿到项目地址
+●依次输入 git init
+           git add .（PS：这里有一个空格）
+		   git commit -m "版本说明"
+		   git remote add origin 项目地址
+		   git push origin master
+git remote -v 查看当前所有远程地址别名
+●版本变换 
+        git add . 
+		git commit -m "新的版本说明"
+	    git push origin master
+		
+[alias]
+	co = checkout
+	ci = commit 
+	st = status
+	br = branch
+	psm = push origin master\n
+	plm = pull origin master
+	rao = remote add origin
+	last = log -1 HEAD

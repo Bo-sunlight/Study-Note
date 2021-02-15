@@ -1,0 +1,297 @@
+笔记
+1.在 FreeRTOS 中，int 型从不使用，只使用 short 和 long 型。在 Cortex-M 内核的 MCU 中，short 为 16 位，long 为 32 位。
+#define portSTACK_TYPE uint32_t 
+#define portBASE_TYPE long 
+任务控制模块(TCB)
+
+2.定义变量的时候往往会把变量的类型当作前缀加在变量上。char 型变量的前缀是 c，short 型变量的前缀是 s，long 型变量的前缀是 l，
+  portBASE_TYPE 类型变量的前缀是 x。还有其他的数据类型，比如数据结构，任务句柄，队列句柄等定义的变量名的前缀也是 x如果一个变量是无符号型的那么会有一个前缀 u，
+  如果是一个指针变量则会有一个前缀 p。因此，当我们定义一个无符号的 char 型变量的时候会加一个 uc 前缀，
+  当定义一个char 型的指针变量的时候会有一个 pc 前缀。 
+
+3.pdTRUE 1  pdFALSE 0  pdPASS 1  pdFAIL 0
+
+4.双向链表与单向链表的区别就是节点中有两个节点指针，分别指向前后两个节点，其它完全一样
+
+5.重点： 传消息时先判断是否为空（否则一开始就开定时器中断的话，中断服务函数里面的发送就不起作用了。
+6.二值信号量在无效的时候，任务一直处于阻塞状态（如果用标志位的话要一直轮询消耗CPU时间）
+
+7.任务的配置大小为定义的4倍，如128则实际是128x4字节
+
+8.链表是通过节点把离散的数据链接成一个表，通过对节点的插入和删除操作从而实现对数据的存取。而数组是通过开辟一段连续的内存来存储数据，
+ 这是数组和链表最大的区别
+
+9.用 户 想 要 使 用 使 用 CPU 利 用 率 统 计 的 话 ， 需 要 自 定 义 配 置 一 下 ， 首 先 在
+  FreeRTOSConfig.h 配置与系统运行时间和任务状态收集有关的配置选项
+  
+10 不管是裸机编程还是 RTOS 编程，栈的分配大小都非常重要。局部变量，函数调用时的现场保护和返
+   回地址，函数的形参，进入中断函数前和中断嵌套等都需要栈空间，栈空间定义小了会造成系统崩溃。（在.s文件下配置系统栈大小） 进入中断以后使用的局部变量以及可能发生的中断嵌套都是用的系统栈
+   在 RTOS 下，每个任务都有自己的栈空间。对于 FreeRTOS 来说，任务栈空间是在
+   任务创建的时候从 FreeRTOSConfig.h 文件中定义的 heap 空间中申请的
+   
+11 在 FreeRTOS 操作系统中，主堆栈指针 MSP 是给系统栈空间使用的，进 程堆栈指针 PSP 是给任务栈使用的。也就是说，在 FreeRTOS 任务中，所有栈空间的使用都是通过
+   PSP 指针进行指向的。一旦进入了中断函数以及可能发生的中断嵌套都是用的 MSP 指针
+   
+12  Running—运行态 ： 当任务处于实际运行状态被称之为运行态，即 CPU 的使用权被这个任务占用。
+	Ready—就绪态：处于就绪态的任务是指那些能够运行（没有被阻塞和挂起），但是当前没有运行的任务，因为同优先级或更高优先级的任务正在运行。
+	Blocked—阻塞态 ： 由于等待信号量，消息队列，事件标志组等而处于的状态被称之为阻塞态，另外任务调用延迟函数也 会处于阻塞态。
+    Suspended—挂起态 ： 类似阻塞态，通过调用函数 vTaskSuspend()对指定任务进行挂起，挂起后这个任务将不被执行，只有调用函数 xTaskResume()才可以将这个任务从挂起态恢复。
+  
+13 栈生长方向从高地址向低地址生长（M4 和 M3 是这种方式）
+
+14 FreeRTOS 的栈溢出检测机制 方法一 ：在任务切换时检测任务栈指针是否过界了，如果过界了，在任务切换的时候会触发栈溢出钩子函数。（需要配置宏定义才能触发）
+                                        void vApplicationStackOverflowHook( TaskHandle_t xTask,signed char *pcTaskName );
+                              使用方法一需要用户在 FreeRTOSConfig.h 文件中配置如下宏定义：#define configCHECK_FOR_STACK_OVERFLOW 1
+				
+15  从中断触发到执行中断服务程序的第一条指令这段时间就是中断延迟时间。  
+
+16	对寄存器 basepri 我们举一个例子，帮助大家理解，比我们配置寄存器 basepri 的数值为 16，所有优先
+	级数值大于等于 16 的中断都会被关闭，优先级数值小于 16 的中断不会被关闭。对寄存器 basepri 寄存器
+	赋值 0，那么被关闭的中断会被打开。这个就是 FreeRTOS 开关中断的实现方案。
+
+17 建议 configMAX_PRIORITIES 的最大值不要超过 32，即用户任务可以使用的优先级范围是0到31
+
+18   IRQ 任务：IRQ 任务是指通过中断服务程序进行触发的任务，此类任务应该设置为所有任务里面优先级最高的。
+     高优先级后台任务：比如按键检测，触摸检测，USB 消息处理，串口消息处理等，都可以归为这一类任务。
+     低优先级的时间片调度任务：比如 emWin 的界面显示，LED 数码管的显示等不需要实时执行的都可以归为这一类任务。
+                                 实际应用中用户不必拘泥于将这些任务都设置为优先级 1 的同优先级任务，可以
+                                 设置多个优先级，只需注意这类任务不需要高实时性
+	  空闲任务：空闲任务是系统任务。
+    特别注意：IRQ 任务和高优先级任务必须设置为阻塞式（调用消息等待或者延迟等函数即可），只有这样，高优先级任务才会释放 CPU 的使用权，,从而低优先级任务才有机会得到执行。
+      中断的优先级永远高于任何任务的优先级
+	  
+	  void vTaskPrioritySet( TaskHandle_t xTask, /* 任务句柄 */
+                             UBaseType_t uxNewPriority ); /* 给任务配置的新优先级 */
+                  函数 vTaskPrioritySet 用于实现 FreeRTOS 任务优先级的修改。  
+				  第 1 个参数是任务句柄，用于区分不同的任务。  
+				  第 2 个参数是给任务配置的新优先级。
+
+      注意： 1. 使用此函数需要在 FreeRTOSConfig.h 配置文件中配置如下宏定义为 1
+			            #define INCLUDE_vTaskPrioritySet 1
+			2. 如果第二个参数里面填的是 NULL，即数值 0 的话，那么配置的就是当前正在执行的任务。
+			
+19  时间片调度适合用于不要求任务实时响应的情况。
+
+20 FreeRTOS 任务代码中临界段的进入和退出主要是通过操作寄存器 basepri 实现的。进入临界段前操
+   作寄存器 basepri 关闭了所有小于等于宏定义 configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 所定义的中断优先级，这样临界段代码就不会被中断干扰到
+	
+21 调度锁就是 RTOS 提供的调度器开关函数，如果某个任务调用了调度锁开关函数，处于调度锁开和调度锁关之间的代码在执行期间是不会被“高优先级的任务抢占的”，即任务调度被禁止
+         （调度锁只是禁止了任务调度，并没有关闭任何中断，中断还是正常执行的。而临界段进行了开关中断操作）
+	函数 vTaskSuspendAll 用于实现 FreeRTOS 调度锁开启。
+		使用这个函数要注意以下问题：
+		1. 调度锁函数只是禁止了任务调度，并没有关闭任何中断。
+		2. 调度锁开启函数 vTaskSuspendAll 和调度锁关闭函数 xTaskResumeAll 一定要成对使用。
+		3. 切不可在调度锁开启函数 vTaskSuspendAll 和调度锁关闭函数 xTaskResumeAll 之间调用任何会引
+           起任务切换的 API，比如 vTaskDelayUntil、vTaskDelay、xQueueSend 等。
+		   
+22 FreeRTOS 的系统时钟节拍可以在配置文件 FreeRTOSConfig.h 里面设置：
+         #define configTICK_RATE_HZ ( ( TickType_t ) 1000 )
+         如上所示的宏定义配置表示系统时钟节拍是 1KHz，即 1ms。
+	/* 获取当前的系统时间 */
+ xLastWakeTime = xTaskGetTickCount();
+	函数 vTaskDelay 用于任务的延迟。  
+	  参数 xTicksToDelay 用于设置延迟的时钟节拍个数，范围 1- 0xFFFFFFFF。延迟时间的最大值在
+             portmacro.h 文件里面有定义：
+                       typedef uint32_t TickType_t;
+                       #define portMAX_DELAY ( TickType_t )0xffffffffUL
+                       即延迟时间的范围是：1- 0xFFFFFFFF
+		   
+事件标志组 
+
+使用全局变量相比事件标志组主要有如下三个问题：
+ 使用事件标志组可以让 RTOS 内核有效地管理任务，而全局变量是无法做到的，任务的超时等机制需要用户自己去实现。
+ 使用了全局变量就要防止多任务的访问冲突，而使用事件标志组则处理好了这个问题，用户无需担心。
+ 使用事件标志组可以有效地解决中断服务程序和任务之间的同步问题。
+
+	#define configUSE_16_BIT_TICKS 1
+	配置宏定义 configUSE_16_BIT_TICKS 为 1 时，每创建一个事件标志组，用户可以使用的事件标志是
+	8 个。  #define configUSE_16_BIT_TICKS 0
+	配置宏定义 configUSE_16_BIT_TICKS 为 0 时，每创建一个事件标志组，用户可以使用的事件标志是
+	24 个。
+	
+	EventGroupHandle_t  xEventGroupCreate()：函数 xEventGroupCreate 用于创建事件标志组。返回值事件标志组的句柄
+	
+	EventBits_t  xEventGroupSetBits( EventGroupHandle_t  xEventGroup, /* 事件标志组句柄 */
+                          const EventBits_t  uxBitsToSet ); /* 事件标志位设置 */  返回当前的事件标志组数值。
+
+	BaseType_t  xEventGroupSetBitsFromISR(EventGroupHandle_t xEventGroup, /* 事件标志组句柄 */
+										 const EventBits_t uxBitsToSet, /* 事件标志位设置 */
+										 BaseType_t *pxHigherPriorityTaskWoken ); /* 高优先级任务是否被唤醒的状态保存 */
+										 返回值，如果消息成功发送给 daemon 任务（就是 FreeRTOS 的定时器任务）返回 pdPASS，否则
+                                            返回 pdFAIL，另外 daemon 任务中的消息队列满了也会返回 pdFAIL。
+		   （注意：使用前一定要保证事件标志已经通过函数 xEventGroupCreate 创建了。同时要在 FreeRTOSConfig.h
+					文件中使能如下三个宏定义：
+					#define INCLUDE_xEventGroupSetBitFromISR 1
+					#define configUSE_TIMERS 1
+					#define INCLUDE_xTimerPendFunctionCall 1               ）
+							   
+	
+	EventBits_t xEventGroupWaitBits(const EventGroupHandle_t xEventGroup, /* 事件标志组句柄 */
+									 const EventBits_t uxBitsToWaitFor, /* 等待被设置的事件标志位 */ 比如设置变量 uxBitsToWaitFor = 0x0003 就表示等待事件标志的位 0 和位 1 设置为 1。此参数切不可设置为 0
+									 const BaseType_t xClearOnExit, /* 选择是否清零被置位的事件标志位 */pdTRUE：清零
+									 const BaseType_t xWaitForAllBits, /* 选择是否等待所有标志位都被设置 */pdTRUE：等待
+									 TickType_t xTicksToWait ); /* 设置等待时间 */
+									返回值，由于设置的时间超时或者指定的事件标志位被置1，导致函数退出时返回的事件标志组数值（如果由于指定的事件标志位被置1而返回，并且设置了这个函数的参数xClearOnExit为pdTRUE，
+                                                                                                                             那么此函数的返回值是清零前的事件标志组数值。		   
+		   
+软件定时器
+  在 FreeRTOSConfig.h 文件中使能宏定义：
+            #define configUSE_TIMERS 1
+   FreeRTOS 软件定时器组的时基是基于系统时钟节拍实现的
+   单次模式和周期模式 ： 单次模式就是用户创建了定时器并启动了定时器后，定时时间到将不再重新执行，这就是单次模式软件定时器的含义
+		   TimerHandle_t xTimerCreate
+									 ( const char * const pcTimerName, /* 定时器名字 */
+									 const TickType_t xTimerPeriod, /* 定时器周期，单位系统时钟节拍 */
+									 const UBaseType_t uxAutoReload, /* 选择单次模式或者周期模式 */
+									 void * const pvTimerID, /* 定时器 ID */当创建不同的定时器，但使用相同的回调函数时，在回调函数中通过不同的ID 号来区分不同的定时器。
+									 TimerCallbackFunction_t pxCallbackFunction ); /* 定时器回调函数 */pdTRUE，则表示选择周期模式
+		                       返回值，创建成功返回定时器的句柄，由于 FreeRTOSCongfig.h 文件中 heap 空间不足，或者定时
+                               器周期设置为 0，会返回 NULL。
+		    
+			BaseType_t xTimerStart( TimerHandle_t xTimer, /* 定时器句柄 */
+                                     TickType_t xBlockTime ); /* 成功启动定时器前的最大等待时间设置，单位系统时钟节拍 */
+		   
+消息队列（重点）
+          消息队列可以应用于发送不定长消息的场合（队列创建时候是多少字节，接收发来的数据就要那么多字节）
+		  相比消息队列，使用全局数组主要有如下四个问题：
+				 使用消息队列可以让 RTOS 内核有效地管理任务，而全局数组是无法做到的，任务的超时等机制需要用户自己去实现。
+				 使用了全局数组就要防止多任务的访问冲突，而使用消息队列则处理好了这个问题，用户无需担心。
+				 使用消息队列可以有效地解决中断服务程序与任务之间消息传递的问题。
+				 FIFO 机制更有利于数据的处理。
+        
+	        中断服务程序向消息队列放数据，任务 Task1 从消息队列取数据，如果放数据的速度快于取数据的速
+		度，那么会出现消息队列存放满的情况。由于中断服务程序里面的消息队列发送函数
+		xQueueSendFromISR 不支持超时设置，所以发送前要通过函数 xQueueIsQueueFullFromISR 检测
+		消息队列是否满。
+		 中断服务程序向消息队列放数据，任务 Task1 从消息队列取数据，如果放数据的速度慢于取数据的速
+		度，那么会出现消息队列存为空的情况。在 FreeRTOS 的任务中可以通过函数 xQueueReceive 获取
+		消息，因为此函数可以设置超时等待，直到消息队列中有消息存放或者设置的超时时间溢出。
+		
+	 QueueHandle_t xQueueCreate( UBaseType_t uxQueueLength, /* 消息个数 */
+                                 UBaseType_t uxItemSize ); /* 每个消息大小，单位字节 */
+		                    返回值，如果创建成功会返回消息队列的句柄，如果由于 FreeRTOSConfig.h 文件中 heap 大小不足，无法为此消息队列提供所需的空间会返回 NULL
+		                     重点：FreeRTOS 的消息传递是数据的复制，而不是传递的数据地址
+							 
+	BaseType_t xQueueSend(
+						 QueueHandle_t xQueue, /* 消息队列句柄 */
+						 const void * pvItemToQueue, /* 要传递数据地址 */
+						 TickType_t xTicksToWait /* 等待消息队列有空间的最大等待时间 */ portMAX_DELAY，那么此发送函数会永久等待直到消息队列有空间可以使用
+						 );
+			 我们这里说的函数 xQueueSend 等效于 xQueueSendToBack，即实现的是 FIFO 方式的存取
+				返回值，如果消息成功发送返回 pdTRUE，否则返回 errQUEUE_FULL。
+				
+	BaseType_t xQueueSendFromISR
+						 (
+						 QueueHandle_t xQueue, /* 消息队列句柄 */
+						 const void *pvItemToQueue, /* 要传递数据地址 */
+						 BaseType_t *pxHigherPriorityTaskWoken /* 高优先级任务是否被唤醒的状态保存 */此参数的数值是 pdTRUE，说明有高优先级任务要执行，否则没有
+						 );
+						 
+	BaseType_t xQueueReceive(
+							 QueueHandle_t xQueue, /* 消息队列句柄 */
+							 void *pvBuffer, /* 接收消息队列数据的缓冲地址 */
+							 TickType_t xTicksToWait /* 等待消息队列有数据的最大等待时间 */
+							 );
+						返回值，如果接到到消息返回 pdTRUE，否则返回 pdFALSE。			   
+
+二值信号量
+     创建信号量 SemaphoreHandle_t xSemaphoreCreateBinary(void)返回值，如果创建成功会返回二值信号量的句柄
+	 释放信号量（置1） xSemaphoreGive( SemaphoreHandle_t xSemaphore ); /* 信号量句柄 */  返回值，如果信号量释放成功返回 pdTRUE，否则返回 pdFALSE，因为信号量的实现是基于消息队列，返回失败的主要原因是消息队列已经满了。
+	释放信号量 xSemaphoreGiveFromISR
+						 (
+						 SemaphoreHandle_t xSemaphore, /* 信号量句柄 */
+						 signed BaseType_t *pxHigherPriorityTaskWoken /* 高优先级任务是否被唤醒的状态保存 */返回值，如果信号量释放成功返回 pdTRUE，否则返回 errQUEUE_FULL
+						 )	   
+	获取信号量 xSemaphoreTake( SemaphoreHandle_t xSemaphore, /* 信号量句柄 */
+ T                  ickType_t xTicksToWait ); /* 等待信号量可用的最大等待时间 */	 portMAX_DELAY，那么此函数会永久等待直到信号量可用						   
+		   
+		   
+任务通知 （重点）的宏定义已经在 FreeRTOS.h 文件中使能：#define configUSE_TASK_NOTIFICATIONS 1
+                   释放信号量（含任务二值信号量，任务计数信号量）  BaseType_t xTaskNotifyGive( TaskHandle_t xTaskToNotify ); /* 任务句柄 */
+		            void vTaskNotifyGiveFromISR(
+												 TaskHandle_t xTaskToNotify, /* 任务句柄 */
+												 BaseType_t *pxHigherPriorityTaskWoken ); /* 高优先级任务是否被唤醒的状态保存 */
+												 
+		           获取信号量（含任务二值信号量，任务计数信号量）uint32_t ulTaskNotifyTake( BaseType_t xClearCountOnExit, /* 选择是否清零用于任务通知的 ulNotifiedValue */
+				                                                                                    参数配置为 pdTRUE 表示于任务二值信号量
+                                                                                             TickType_t xTicksToWait ); /* 等待信号量可用的最大等待时间 */ portMAX_DELAY无限等待 
+任务事件标志组 （重点）		   
+               BaseType_t xTaskNotify( TaskHandle_t xTaskToNotify, /* 任务句柄 */
+									 uint32_t ulValue, /* 更新任务控制块中的变量 ulNotifiedValue */
+									 eNotifyAction eAction ); /* 任务通知模式设置 */eSetBits
+				BaseType_t xTaskNotifyFromISR(   TaskHandle_t xTaskToNotify, /* 任务句柄 */
+												 uint32_t ulValue, /* 更新任务控制块中的变量 ulNotifiedValue */
+												 eNotifyAction eAction, /* 任务通知模式设置 */eSetBits
+												 BaseType_t *pxHigherPriorityTaskWoken ); /* 高优先级任务是否被唤醒的状态保存 */
+				BaseType_t xTaskNotifyWait( 
+												/* 设置函数执行前清零任务控制块中变量 ulNotifiedValue 那些位 */
+												uint32_t ulBitsToClearOnEntry, 
+												/*设置函数退出前清零任务控制块中变量 ulNotifiedValue 那些位 */
+												uint32_t ulBitsToClearOnExit,
+												/* 保存任务控制块中的变量 ulNotifiedValue 到指针变量 pulNotifiedValue 所指向的存储单元 */
+												uint32_t *pulNotificationValue, 
+												/* 等待消息通知的最大等待时间 */ 
+												TickType_t xTicksToWait );	   
+
+FreeRTOS 动态内存管理
+                     void *pvPortMalloc( size_t xSize )申请内存 返回值为地址
+					 void vPortFree( void *pv )
+					 
+独立看门狗监测 
+         推荐在最高优先级任务里面实现喂狗，这样才可以保证其它低优先级任务发来了事件标志后，Task5可以及时的喂狗
+		 	bsp_InitIwdg(4000);
+			IWDG_Feed();
+
+		   
+		   
+			
+ 打印出来的任务状态字母 B, R, D, S 对应如下含义：
+#define tskBLOCKED_CHAR ( 'B' ) 任务阻塞
+#define tskREADY_CHAR ( 'R' ) 任务就绪
+#define tskDELETED_CHAR ( 'D' ) 任务删除
+#define tskSUSPENDED_CHAR ( 'S' ) 任务挂起
+
+任务：
+(											函数声明
+**********************************************************************************************************
+*/
+static void vTaskTaskUserIF(void *pvParameters);
+static void vTaskLED(void *pvParameters);
+static void vTaskMsgPro(void *pvParameters);
+static void vTaskStart(void *pvParameters);
+static void AppTaskCreate (void);)
+
+
+//任务函数
+static void AppTaskCreate (void)
+{
+    xTaskCreate( vTaskTaskUserIF,   	/* 任务函数  */
+                 "vTaskUserIF",     	/* 任务名    */
+                 512,               	/* 任务栈大小，单位word，也就是4字节 */
+                 NULL,              	/* 任务参数  */
+                 1,                 	/* 任务优先级*/
+                 &xHandleTaskUserIF );  /* 任务句柄  */
+	
+	
+	xTaskCreate( vTaskLED,    		/* 任务函数  */
+                 "vTaskLED",  		/* 任务名    */
+                 512,         		/* 任务栈大小，单位word，也就是4字节 */
+                 NULL,        		/* 任务参数  */
+                 2,           		/* 任务优先级*/
+                 &xHandleTaskLED ); /* 任务句柄  */
+	
+	xTaskCreate( vTaskMsgPro,     		/* 任务函数  */
+                 "vTaskMsgPro",   		/* 任务名    */
+                 512,             		/* 任务栈大小，单位word，也就是4字节 */
+                 NULL,           		/* 任务参数  */
+                 3,               		/* 任务优先级*/
+                 &xHandleTaskMsgPro );  /* 任务句柄  */
+	
+	
+	xTaskCreate( vTaskStart,     		/* 任务函数  */
+                 "vTaskStart",   		/* 任务名    */
+                 512,            		/* 任务栈大小，单位word，也就是4字节 */
+                 NULL,           		/* 任务参数  */
+                 4,              		/* 任务优先级*/
+                 &xHandleTaskStart );   /* 任务句柄  */
+}
